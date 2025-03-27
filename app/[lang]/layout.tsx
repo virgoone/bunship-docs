@@ -3,6 +3,7 @@ import { RootProvider } from "fumadocs-ui/provider";
 import { Inter } from "next/font/google";
 import type { ReactNode } from "react";
 import { I18nProvider, type Translations } from "fumadocs-ui/i18n";
+import Script from "next/script";
 
 const cn: Partial<Translations> = {
   search: "搜索",
@@ -48,6 +49,11 @@ export default async function Layout({
         >
           <RootProvider>{children}</RootProvider>
         </I18nProvider>
+            <Script
+              async
+              src="https://sa.douni.one/st.js"
+              data-website-id="4385186f-a82c-4236-a6e8-e866f081cf10"
+            />
       </body>
     </html>
   );
