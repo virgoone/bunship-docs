@@ -1,0 +1,117 @@
+---
+title: Database and ORM
+description: Database and ORM tools used by Bunship
+---
+
+Bunship uses Supabase as the default database for managing user information, orders, blogs, and other data. It also supports MySQL, PostgreSQL, and other databases. Currently, Bunship uses Prisma as its ORM, which means any database supported by Prisma can be used.
+
+## Supabase Configuration
+
+### Creating a Supabase Project
+
+1. Visit the [Supabase website](https://supabase.com/) and sign up/log in
+2. Create a new project, set a project name and password
+3. Wait for the project initialization to complete
+
+### Getting Connection Information
+
+In the "Database" tab of your project settings, find and copy the following information:
+
+- Database URL
+
+## Prisma Configuration
+
+Bunship has pre-configured Prisma, with the configuration file located in `prisma/schema.prisma`. The Prisma client can be imported from `@/lib/prisma`.
+
+### Initializing Prisma
+
+After cloning the project for the first time, simply run the following command to generate the Prisma client:
+
+```bash
+bun prisma generate
+```
+
+### Configuring Database Connection
+
+Edit the `.env` file and add the Supabase database connection information:
+
+```
+DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-ID].supabase.co:5432/postgres"
+```
+
+### schema.prisma File
+
+The `prisma/schema.prisma` file in the project already includes the basic data models:
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Data models defined
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+```
+
+## Usage
+
+### Using in Application
+
+The Prisma client is already configured in `@/lib/prisma` and can be imported directly:
+
+```typescript
+import { prisma } from "@/lib/prisma";
+
+// Query users
+export async function getUsers() {
+  return await prisma.user.findMany();
+}
+
+// Create a user
+export async function createUser(data: { email: string; name?: string }) {
+  return await prisma.user.create({ data });
+}
+```
+
+## Database Migrations
+
+When updating data models, run the following commands to update the database structure:
+
+```bash
+# Generate migration files
+bun prisma migrate dev --name add_new_fields
+
+# Deploy changes to production
+bun prisma migrate deploy
+```
+
+## Using Other Databases
+
+Prisma supports multiple databases. Simply modify the provider in `schema.prisma`:
+
+```prisma
+datasource db {
+  provider = "mysql" // or "sqlite", "sqlserver", etc.
+  url      = env("DATABASE_URL")
+}
+```
+
+Then update the connection string in the `.env` file accordingly.
+
+## Common Issues
+
+### Database Connection Failed
+
+- Check if the connection string is correct
+- Confirm IP whitelist settings
+- Verify database user permissions

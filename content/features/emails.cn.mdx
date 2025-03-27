@@ -1,0 +1,233 @@
+---
+title: 邮件服务
+description: Bunship 默认使用 resend 和 @react-email/components 实现
+---
+
+Bunship 使用 [Resend](https://resend.com) 和 [@react-email/components](https://react.email) 实现邮件服务，支持验证邮件、一次性验证码、密码重置等功能，并提供了响应式的邮件模板。
+
+## 设置 Resend
+
+### 1. 注册账户
+
+首先，您需要在 Resend 平台创建账户：
+
+1. 访问 [Resend 官网](https://resend.com) 并注册账户
+2. 完成邮箱验证
+3. 创建一个域名或使用 Resend 提供的测试域名
+
+### 2. 获取 API 密钥
+
+1. 登录 Resend 控制台
+2. 导航至 "API Keys" 部分
+3. 点击 "Create API Key" 按钮
+4. 为密钥命名并创建
+5. 复制生成的 API 密钥
+
+### 3. 配置环境变量
+
+将获取的 API 密钥添加到项目的 `.env` 文件中：
+
+```
+RESEND_API_KEY=re_xxxxxxxxxxxx
+```
+
+## 邮件模板
+
+Bunship 使用 React Email 创建响应式邮件模板，所有模板都位于 `src/emails/templates` 目录下。
+
+### 已实现的邮件模板
+
+Bunship 已经实现了以下邮件模板：
+
+1. **邮箱验证邮件** - 用于验证用户邮箱地址
+2. **一次性验证码 (OTP)** - 用于多因素认证或登录验证
+3. **密码重置邮件** - 用于用户忘记密码时的重置流程
+
+### 预览邮件模板
+
+您可以使用以下命令在本地预览邮件模板：
+
+```bash
+bun email:dev
+```
+
+这将启动一个本地服务器，通常在 `http://localhost:3001`，您可以在浏览器中查看和测试所有邮件模板的渲染效果。
+
+## 创建自定义邮件模板
+
+您可以通过在 `src/emails/templates` 目录下创建新的 React 组件来添加自定义邮件模板。
+
+### 模板示例
+
+以下是一个发送一次性验证码的邮件模板示例：
+
+```tsx
+import { Footer } from "@/emails/components/footer";
+import { Logo } from "@/emails/components/logo";
+import {
+  Body,
+  Container,
+  Font,
+  Head,
+  Html,
+  Preview,
+  Section,
+  Tailwind,
+  Text,
+} from "@react-email/components";
+
+export default function RequestSendOtpEmail({
+  name = "there",
+  otp = "123456",
+  expiresInMinutes = 10,
+}: {
+  name: string;
+  otp: string;
+  expiresInMinutes?: number;
+}) {
+  return (
+    <Html>
+      <Head>
+        <Font
+          fontFamily="Geist Mono"
+          fallbackFontFamily="Verdana"
+          webFont={{
+            url: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@500&display=swap",
+            format: "woff2",
+          }}
+          fontWeight={500}
+          fontStyle="normal"
+        />
+      </Head>
+      <Preview>Your Bunship verification code: {otp}</Preview>
+      <Tailwind>
+        <Body className="bg-white font-mono">
+          <Container className="mx-auto py-5 pb-12 max-w-[580px]">
+            <Logo />
+
+            <Text className="text-xs leading-7 mb-6 font-mono">Hi {name},</Text>
+
+            <Text className="text-xs leading-7 pb-2 font-mono">
+              Here is your verification code for Bunship:
+            </Text>
+
+            <Section className="py-4">
+              <Text className="text-center font-mono text-2xl tracking-widest font-bold bg-gray-100 py-4 rounded-md">
+                {otp}
+              </Text>
+            </Section>
+
+            <Text className="text-xs leading-7 mt-3 font-mono">
+              This code will expire in {expiresInMinutes} minutes. Please enter
+              it on the verification page to complete your sign-in process.
+            </Text>
+
+            <Text className="text-xs leading-7 mt-4 font-mono">
+              If you didn&#x27;t request this code, you can safely ignore this
+              email.
+            </Text>
+
+            <Text className="text-xs leading-7 mt-4 font-mono">
+              For security reasons, never share this code with anyone. Bunship
+              team will never ask you for this code.
+            </Text>
+
+            <Footer />
+          </Container>
+        </Body>
+      </Tailwind>
+    </Html>
+  );
+}
+```
+
+## 发送邮件
+
+Bunship 已经在 `@/lib/auth` 中实现了发送邮件的方法。这些方法用于：
+
+1. 发送邮箱验证邮件
+2. 发送一次性验证码
+3. 发送密码重置链接
+
+### 发送邮件示例
+
+```typescript
+import { Resend } from "resend";
+import { render } from "@react-email/render";
+import RequestSendOtpEmail from "@/emails/templates/request-send-otp-email";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+export async function sendOtpEmail(email: string, name: string, otp: string) {
+  try {
+    const html = render(
+      <RequestSendOtpEmail 
+        name={name} 
+        otp={otp} 
+        expiresInMinutes={10} 
+      />
+    );
+    
+    await resend.emails.send({
+      from: "Bunship <noreply@bunship.example.com>",
+      to: email,
+      subject: "Your verification code",
+      html: html,
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send email:", error);
+    return { success: false, error };
+  }
+}
+```
+
+## 自定义邮件组件
+
+除了创建完整的邮件模板外，您还可以创建可复用的邮件组件，如标题、按钮、页脚等。Bunship 已经在 `src/emails/components` 目录下提供了一些常用组件。
+
+### 创建自定义组件
+
+例如，创建一个自定义按钮组件：
+
+```tsx
+// src/emails/components/button.tsx
+import { Button as EmailButton } from "@react-email/components";
+
+export function Button({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <EmailButton
+      href={href}
+      className="bg-blue-600 text-white font-bold py-3 px-6 rounded-md"
+    >
+      {children}
+    </EmailButton>
+  );
+}
+```
+
+## 故障排除
+
+### 邮件未发送
+
+1. 检查 `RESEND_API_KEY` 环境变量是否正确设置
+2. 确认发件人地址是否已在 Resend 平台验证
+3. 检查 Resend 控制台是否显示任何发送错误
+
+### 邮件样式问题
+
+1. 使用 `bun email:dev` 预览邮件，确保样式正确
+2. 不同邮件客户端对 CSS 支持有差异，建议使用内联样式
+3. 使用 React Email 的内置组件可提高邮件兼容性
+
+## 进一步阅读
+
+- [Resend 官方文档](https://resend.com/docs)
+- [React Email 官方文档](https://react.email/docs)

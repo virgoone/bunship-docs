@@ -1,0 +1,38 @@
+---
+title: 开始
+description: 开始
+---
+
+## 用于构建 SaaS 应用程序的 NextJS 启动套件
+
+Bunship 是一个生产就绪的启动套件，基于 NextJS、Turborepo 和 Bun 构建，帮助您在创纪录的时间内构建、启动和扩展您的 SaaS 产品。我们精心打造的基础结合了最佳实践、优化组件和基本功能，以加速您的开发旅程。
+
+## 特点
+
+- **单体仓库结构** - 由 Turborepo 提供支持，实现最佳的工作空间管理
+- **Next.js 应用路由器** - 使用最新的 Next.js 特性构建
+- **Bun 包管理器** - 快速高效的依赖管理
+- **认证系统** - 使用 Better Auth 提供商的完整认证流程
+- **订阅管理** - 内置计费和订阅功能
+- **UI 组件库** - 为 SaaS 应用预构建的、可定制的组件
+- **响应式设计** - 适用于所有屏幕的移动优先方法
+- **SEO 优化** - 搜索引擎可见性的最佳实践
+- **TypeScript** - 端到端类型安全
+- **电子邮件模板** - 即用型交易电子邮件设计
+
+## 项目结构
+
+此项目使用 Turborepo 单体仓库结构：
+
+```
+bunship/
+├── apps/
+│   ├── ship/         # Main Next.js application
+│   └── docs/         # Documentation site
+├── packages/
+│   ├── ui/                     # Shared UI components
+│   ├── shared/                 # Shared configurations and utilities
+│   ├── typescript-config/      # Typescript configurations
+│   └── kv/                     # Redis configurations and utilities
+└── ... config files
+```

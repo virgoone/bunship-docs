@@ -1,0 +1,217 @@
+---
+title: Internationalization
+description: Bunship uses next-intl for internationalization support
+---
+
+Bunship uses [next-intl](https://next-intl-docs.vercel.app/) to implement internationalization features, with default support for English and Chinese, easily extensible to other languages.
+
+## File Structure
+
+Bunship uses a multi-file system to manage translation content. All translation files are located in the `i18n/messages` directory, organized as follows:
+
+```
+i18n/
+  └── messages/
+      ├── en/
+      │   ├── auth.json
+      │   ├── common.json
+      │   └── ...
+      └── zh/
+          ├── auth.json
+          ├── common.json
+          └── ...
+```
+
+Each language directory contains multiple JSON files, with each file corresponding to translations for specific features or pages.
+
+## Translation File Examples
+
+Below are basic examples of JSON translation file structures:
+
+```json
+// i18n/messages/en/common.json
+{
+  "navbar": {
+    "home": "Home",
+    "features": "Features",
+    "pricing": "Pricing",
+    "docs": "Documentation",
+    "login": "Login",
+    "signup": "Sign Up"
+  },
+  "footer": {
+    "copyright": "Copyright © {year} Bunship"
+  }
+}
+```
+
+```json
+// i18n/messages/zh/common.json
+{
+  "navbar": {
+    "home": "首页",
+    "features": "功能",
+    "pricing": "价格",
+    "docs": "文档",
+    "login": "登录",
+    "signup": "注册"
+  },
+  "footer": {
+    "copyright": "版权所有 © {year} Bunship"
+  }
+}
+```
+
+## Using Translations
+
+### In Client Components
+
+To use translations in client components, use the `useTranslations` hook:
+
+```tsx
+'use client';
+
+import { useTranslations } from 'next-intl';
+
+export default function Navbar() {
+  const t = useTranslations('common.navbar');
+  
+  return (
+    <nav>
+      <ul>
+        <li><a href="/">{t('home')}</a></li>
+        <li><a href="/features">{t('features')}</a></li>
+        <li><a href="/pricing">{t('pricing')}</a></li>
+        <li><a href="/docs">{t('docs')}</a></li>
+      </ul>
+      <div>
+        <a href="/login">{t('login')}</a>
+        <a href="/signup">{t('signup')}</a>
+      </div>
+    </nav>
+  );
+}
+```
+
+### In Server Components
+
+For server components, use the `getTranslations` function:
+
+```tsx
+import { getTranslations } from 'next-intl/server';
+
+export default async function Footer() {
+  const t = await getTranslations('common.footer');
+  
+  return (
+    <footer>
+      <p>{t('copyright', { year: new Date().getFullYear() })}</p>
+    </footer>
+  );
+}
+```
+
+## Language Switching
+
+Bunship uses URL path prefixes to differentiate languages, for example:
+- English: `/en/dashboard`
+- Chinese: `/zh/dashboard`
+
+Example component for language switching:
+
+```tsx
+'use client';
+
+import { usePathname, useRouter } from 'next-intl/client';
+import { useLocale } from 'next-intl';
+
+export default function LanguageSwitcher() {
+  const locale = useLocale();
+  const pathName = usePathname();
+  const router = useRouter();
+  
+  const changeLanguage = (newLocale) => {
+    router.replace(pathName, { locale: newLocale });
+  };
+  
+  return (
+    <div>
+      <button
+        onClick={() => changeLanguage('en')}
+        className={locale === 'en' ? 'active' : ''}
+      >
+        English
+      </button>
+      <button
+        onClick={() => changeLanguage('zh')}
+        className={locale === 'zh' ? 'active' : ''}
+      >
+        中文
+      </button>
+    </div>
+  );
+}
+```
+
+## Adding New Languages
+
+To add support for a new language, follow these steps:
+
+1. Create a new language directory in `i18n/messages`, such as `ja` for Japanese
+
+2. Copy all JSON files from the `en` directory to the new language directory and translate the content
+
+3. Add the new language to the configuration in `lib/i18n.ts`:
+
+```typescript
+// i18n.ts
+export const i18n = {
+  defaultLocale: 'en',
+  locales: ['en', 'zh', 'ja'], // Add new language code
+};
+```
+
+4. Add the new language option to your language switcher component
+
+## URL Routing Strategy
+
+Bunship uses path-based internationalization routing, with each URL path containing a language code prefix:
+
+```
+/[locale]/[...rest]
+```
+
+For example:
+- `/en/dashboard` - English dashboard
+- `/zh/dashboard` - Chinese dashboard
+
+## Best Practices
+
+1. **Maintain naming consistency**: Use the same key structure across all language versions
+2. **Avoid hardcoded text**: Always use translation functions instead of hardcoded text
+3. **Modularity**: Split translation files by feature or page to avoid large files
+4. **Reuse common translations**: Place commonly used text in `common.json` for reuse
+5. **Mind the formatting**: Different languages may have different date, currency, etc. formats; use next-intl formatting features
+
+## Dynamic Content
+
+For dynamic content, you can use parameters:
+
+```tsx
+// Using parameters
+t('greeting', { name: user.name }); // "Hello, John"
+
+// Using plural rules
+t('items', { count: itemCount }); // "1 item" or "5 items"
+```
+
+Corresponding translation file:
+
+```json
+{
+  "greeting": "Hello, {name}",
+  "items": "{count, plural, =0{No items} one{# item} other{# items}}"
+}
+```
+
+For more advanced internationalization features and usage, please refer to the [next-intl official documentation](https://next-intl-docs.vercel.app/).

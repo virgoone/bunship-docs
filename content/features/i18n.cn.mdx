@@ -1,0 +1,217 @@
+---
+title: 国际化
+description: Bunship 默认使用 next-intl 开启国际化
+---
+
+Bunship 使用 [next-intl](https://next-intl-docs.vercel.app/) 实现国际化功能，默认支持中文和英文，可以轻松扩展其他语言。
+
+## 文件结构
+
+Bunship 采用多文件系统管理翻译内容，所有翻译文件位于 `i18n/messages` 目录下，按以下结构组织：
+
+```
+i18n/
+  └── messages/
+      ├── en/
+      │   ├── auth.json
+      │   ├── common.json
+      │   └── ...
+      └── zh/
+          ├── auth.json
+          ├── common.json
+          └── ...
+```
+
+每个语言目录下包含多个 JSON 文件，每个文件对应特定功能或页面的翻译内容。
+
+## 翻译文件示例
+
+以下是 JSON 翻译文件的基本结构示例：
+
+```json
+// i18n/messages/zh/common.json
+{
+  "navbar": {
+    "home": "首页",
+    "features": "功能",
+    "pricing": "价格",
+    "docs": "文档",
+    "login": "登录",
+    "signup": "注册"
+  },
+  "footer": {
+    "copyright": "版权所有 © {year} Bunship"
+  }
+}
+```
+
+```json
+// i18n/messages/en/common.json
+{
+  "navbar": {
+    "home": "Home",
+    "features": "Features",
+    "pricing": "Pricing",
+    "docs": "Documentation",
+    "login": "Login",
+    "signup": "Sign Up"
+  },
+  "footer": {
+    "copyright": "Copyright © {year} Bunship"
+  }
+}
+```
+
+## 使用翻译内容
+
+### 客户端组件中使用
+
+在客户端组件中使用翻译，需要使用 `useTranslations` hook：
+
+```tsx
+'use client';
+
+import { useTranslations } from 'next-intl';
+
+export default function Navbar() {
+  const t = useTranslations('common.navbar');
+  
+  return (
+    <nav>
+      <ul>
+        <li><a href="/">{t('home')}</a></li>
+        <li><a href="/features">{t('features')}</a></li>
+        <li><a href="/pricing">{t('pricing')}</a></li>
+        <li><a href="/docs">{t('docs')}</a></li>
+      </ul>
+      <div>
+        <a href="/login">{t('login')}</a>
+        <a href="/signup">{t('signup')}</a>
+      </div>
+    </nav>
+  );
+}
+```
+
+### 服务端组件中使用
+
+在服务端组件中，使用 `getTranslations` 函数：
+
+```tsx
+import { getTranslations } from 'next-intl/server';
+
+export default async function Footer() {
+  const t = await getTranslations('common.footer');
+  
+  return (
+    <footer>
+      <p>{t('copyright', { year: new Date().getFullYear() })}</p>
+    </footer>
+  );
+}
+```
+
+## 语言切换
+
+Bunship 通过 URL 路径前缀来区分不同语言，例如：
+- 英文：`/en/dashboard`
+- 中文：`/zh/dashboard`
+
+实现语言切换的组件示例：
+
+```tsx
+'use client';
+
+import { usePathname, useRouter } from 'next-intl/client';
+import { useLocale } from 'next-intl';
+
+export default function LanguageSwitcher() {
+  const locale = useLocale();
+  const pathName = usePathname();
+  const router = useRouter();
+  
+  const changeLanguage = (newLocale) => {
+    router.replace(pathName, { locale: newLocale });
+  };
+  
+  return (
+    <div>
+      <button
+        onClick={() => changeLanguage('en')}
+        className={locale === 'en' ? 'active' : ''}
+      >
+        English
+      </button>
+      <button
+        onClick={() => changeLanguage('zh')}
+        className={locale === 'zh' ? 'active' : ''}
+      >
+        中文
+      </button>
+    </div>
+  );
+}
+```
+
+## 添加新语言
+
+要添加新的语言支持，按以下步骤操作：
+
+1. 在 `i18n/messages` 目录下创建新的语言目录，如 `ja` 表示日语
+
+2. 复制 `en` 目录下所有 JSON 文件到新的语言目录，并翻译内容
+
+3. 在 `lib/i18n.ts` 文件中添加新的语言配置：
+
+```typescript
+// i18n.ts
+export const i18n = {
+  defaultLocale: 'en',
+  locales: ['en', 'zh', 'ja'], // 添加新语言代码
+};
+```
+
+4. 在语言切换组件中添加新语言选项
+
+## URL 路由策略
+
+Bunship 采用基于路径的国际化路由策略，每个 URL 路径包含语言代码前缀：
+
+```
+/[locale]/[...rest]
+```
+
+例如：
+- `/en/dashboard` - 英文版仪表盘
+- `/zh/dashboard` - 中文版仪表盘
+
+## 最佳实践
+
+1. **保持命名一致性**：在所有语言版本中使用相同的键结构
+2. **避免硬编码文本**：始终使用翻译函数而非硬编码文本
+3. **模块化**：按功能或页面拆分翻译文件，避免单个文件过大
+4. **复用通用翻译**：将常用文本放在 `common.json` 中复用
+5. **注意书写格式**：不同语言可能有不同的日期、货币等格式，使用 next-intl 格式化功能处理
+
+## 动态内容
+
+对于动态内容，可以使用传参方式：
+
+```tsx
+// 使用参数
+t('greeting', { name: user.name }); // "你好，张三"
+
+// 使用复数规则
+t('items', { count: itemCount }); // "1 个项目" 或 "5 个项目"
+```
+
+对应的翻译文件：
+
+```json
+{
+  "greeting": "你好，{name}",
+  "items": "{count, plural, =0{无项目} one{# 个项目} other{# 个项目}}"
+}
+```
+
+关于更多高级国际化功能和用法，请参考 [next-intl 官方文档](https://next-intl-docs.vercel.app/)。

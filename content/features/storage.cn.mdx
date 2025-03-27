@@ -1,0 +1,319 @@
+---
+title: 云存储
+description: Bunship 使用 AWS S3 兼容的文件存储系统，只要支持 S3 API 的云存储都可直接使用
+---
+
+Bunship 集成了与 AWS S3 兼容的云存储解决方案，可用于存储和管理各种文件，如用户上传的图片、文档、视频等。除了 Amazon S3 外，Bunship 也支持其他兼容 S3 API 的存储服务，如 MinIO、DigitalOcean Spaces、Cloudflare R2 等。
+
+## 环境配置
+
+要启用云存储功能，需在 `.env` 文件中配置以下环境变量：
+
+```
+S3_ACCESS_KEY=<访问密钥ID>
+S3_SECRET_KEY=<访问密钥>
+S3_REGION=<区域，如 us-east-1>
+S3_ENDPOINT=<端点URL，如 https://s3.amazonaws.com>
+S3_BUCKET=<存储桶名称>
+S3_URL_BASE=<访问URL基础路径>
+```
+
+### 不同服务提供商的配置示例
+
+#### Amazon S3
+
+```
+S3_ACCESS_KEY=<访问密钥ID>
+S3_SECRET_KEY=<访问密钥>
+S3_REGION=us-east-1
+S3_ENDPOINT=https://s3.amazonaws.com
+S3_BUCKET=my-bucket-name
+S3_URL_BASE=https://my-bucket-name.s3.amazonaws.com
+```
+
+#### MinIO
+
+```
+S3_ACCESS_KEY=minioadmin
+S3_SECRET_KEY=minioadmin
+S3_REGION=us-east-1
+S3_ENDPOINT=http://localhost:9000
+S3_BUCKET=bunship
+S3_URL_BASE=http://localhost:9000/bunship
+```
+
+## 使用方式
+
+Bunship 提供了封装好的 S3 服务类，可以通过服务器端操作来生成临时上传 URL，让前端可以直接上传文件到云存储，无需经过服务器中转。
+
+### S3 服务端配置
+
+#### 1. 使用预签名 URL 上传文件
+
+Bunship 已在 `@/lib/s3` 中实现了 S3 服务类，生成预签名 URL 的服务端操作示例：
+
+```typescript
+"use server";
+
+import { env } from "@/env";
+import { S3Service } from "@/lib/s3";
+import { unstable_noStore as noStore } from "next/cache";
+
+export const getS3Sts = async (
+  key: string,
+  fileType: string,
+  prefix = "/bunship-uploads",
+) => {
+  noStore();
+  const s3 = new S3Service({
+    endpoint: env.S3_ENDPOINT,
+    region: env.S3_REGION,
+    accessKeyId: env.S3_ACCESS_KEY,
+    secretAccessKey: env.S3_SECRET_KEY,
+    url: env.S3_URL_BASE,
+    bucket: env.S3_BUCKET,
+  });
+  
+  const res = await s3.getSts(key, {
+    path: prefix!,
+    acl: "public-read",
+    ContentType: fileType,
+  });
+  
+  return res;
+};
+```
+
+此函数返回的结果包含：
+- `putUrl`: 用于上传文件的临时签名URL
+- `url`: 上传成功后可访问文件的URL
+- `endpoint`: S3端点URL
+- `completedUrl`: 完整的文件访问URL
+
+#### 2. 服务端直接上传文件
+
+如果需要在服务端直接上传文件，可以使用以下方法（此方法已在 `@/lib/s3` 中实现，可直接调用）：
+
+```typescript
+"use server";
+ 
+import { env } from "@/env";
+import { S3Service } from "@/lib/s3";
+import { unstable_noStore as noStore } from "next/cache";
+ 
+export const uploadFile = async (
+  key: string,
+  file: Buffer,
+  contentType: string
+) => {
+  noStore();
+  const s3 = new S3Service({
+    endpoint: env.S3_ENDPOINT,
+    region: env.S3_REGION,
+    accessKeyId: env.S3_ACCESS_KEY,
+    secretAccessKey: env.S3_SECRET_KEY,
+    url: env.S3_URL_BASE,
+    bucket: env.S3_BUCKET,
+  });
+  
+  const res = await s3.putItemInBucket(key, file, { ContentType: contentType });
+  
+  return res;
+};
+```
+
+此函数返回的结果包含：
+- `path`: 文件在存储桶中的路径
+- `pathWithFilename`: 完整的文件键名
+- `filename`: 文件名
+- `completedUrl`: 完整的文件访问URL
+- `baseUrl`: 存储基础URL
+- `mime`: 文件的MIME类型
+- `bucket`: 存储桶名称
+
+### 前端文件上传示例
+
+以下是如何在前端使用上面的服务端操作来上传文件：
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import { Button } from "@bunship-ai/ui/components/button";
+import { getS3Sts } from "@/actions/s3-action";
+
+export function FileUploader() {
+  const [isUploading, setIsUploading] = useState(false);
+  const [fileUrl, setFileUrl] = useState("");
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+
+      // 1. 获取预签名URL
+      const fileName = `${Date.now()}-${file.name}`;
+      const { putUrl, completedUrl } = await getS3Sts(
+        fileName,
+        file.type
+      );
+
+      // 2. 使用预签名URL上传文件
+      const uploadResponse = await fetch(putUrl, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": file.type,
+        },
+      });
+
+      if (uploadResponse.ok) {
+        // 3. 上传成功，获取文件URL
+        setFileUrl(completedUrl);
+      } else {
+        console.error("File upload failed");
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <input 
+          type="file"
+          onChange={handleUpload}
+          disabled={isUploading}
+        />
+        {isUploading && <p>正在上传...</p>}
+      </div>
+      
+      {fileUrl && (
+        <div>
+          <p>文件已上传:</p>
+          <a href={fileUrl} target="_blank" rel="noopener noreferrer">
+            {fileUrl}
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
+```
+
+## 高级使用场景
+
+### 图片上传与预览
+
+以用户头像上传为例，展示如何处理图片上传和预览：
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import { Avatar } from "@bunship-ai/ui/components/avatar";
+import { Button } from "@bunship-ai/ui/components/button";
+import { getS3Sts } from "@/actions/s3-action";
+
+export function AvatarUploader({ initialAvatarUrl = "" }) {
+  const [avatarUrl, setAvatarUrl] = useState(initialAvatarUrl);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // 仅接受图片文件
+    if (!file.type.startsWith("image/")) {
+      alert("请选择图片文件");
+      return;
+    }
+
+    setIsUploading(true);
+    
+    try {
+      // 1. 创建一个本地预览
+      const localPreview = URL.createObjectURL(file);
+      setAvatarUrl(localPreview);
+      
+      // 2. 上传到S3
+      const fileName = `avatars/${Date.now()}-${file.name}`;
+      const { putUrl, completedUrl } = await getS3Sts(
+        fileName, 
+        file.type,
+        "/users"
+      );
+      
+      await fetch(putUrl, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": file.type,
+        },
+      });
+      
+      // 3. 使用实际的S3 URL更新头像
+      setAvatarUrl(completedUrl);
+      
+      // 4. 这里可以添加保存用户头像URL到数据库的逻辑
+      
+    } catch (error) {
+      console.error("上传头像失败:", error);
+      // 恢复到初始头像
+      setAvatarUrl(initialAvatarUrl);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <Avatar className="w-24 h-24">
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="用户头像" />
+        ) : (
+          <div className="bg-muted flex items-center justify-center w-full h-full">
+            用户
+          </div>
+        )}
+      </Avatar>
+      
+      <div>
+        <input
+          type="file"
+          id="avatar-upload"
+          className="hidden"
+          accept="image/*"
+          onChange={handleAvatarChange}
+          disabled={isUploading}
+        />
+        <label htmlFor="avatar-upload">
+          <Button as="span" variant="outline" disabled={isUploading}>
+            {isUploading ? "上传中..." : "更换头像"}
+          </Button>
+        </label>
+      </div>
+    </div>
+  );
+}
+```
+
+## 安全性考虑
+
+使用预签名 URL 的主要优势是：
+
+1. 不需要将敏感的 S3 凭据暴露给客户端
+2. 可以精确控制每个上传的权限和有效期
+3. 可以对文件类型、大小等进行服务端验证
+
+在生产环境中，建议：
+
+- 配置适当的 CORS 策略
+- 使用临时凭据而非长期凭据
+- 设置合理的签名 URL 过期时间
+- 为上传的文件实施大小限制

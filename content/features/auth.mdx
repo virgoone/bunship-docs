@@ -1,0 +1,72 @@
+---
+title: Authentication
+description: Implementing basic login and registration, third-party authentication, and MFA verification using better-auth
+---
+
+Bunship has integrated [Better Auth](https://www.better-auth.com) to provide a complete authentication solution, including basic email login/registration, third-party authentication, MFA verification, and Passkey features. The project has already implemented basic login and registration pages, available at `/signin` and `/signup` paths.
+
+## Environment Configuration
+
+### 1. Generate Security Key
+
+First, generate a security key for encrypting sessions and tokens:
+
+```bash
+openssl rand -base64 32
+```
+
+Add the generated key to your `.env` file:
+
+```
+BETTER_AUTH_SECRET=<your_generated_key>
+BETTER_AUTH_URL=<your_application_url, e.g. http://localhost:3000>
+```
+
+## Supported Authentication Methods
+
+### Email Login/Registration
+
+Bunship has built-in email login and registration functionality. Simply visit the `/signin` and `/signup` pages to use these features. No additional configuration is needed; the system automatically handles email verification and account creation processes.
+
+### Third-Party Authentication
+
+The project supports various third-party login methods. To enable them, simply configure the corresponding environment variables:
+
+```
+# GitHub Login
+GITHUB_CLIENT_ID=<your_github_client_id>
+GITHUB_CLIENT_SECRET=<your_github_client_secret>
+
+# Google Login
+GOOGLE_CLIENT_ID=<your_google_client_id>
+GOOGLE_CLIENT_SECRET=<your_google_client_secret>
+```
+
+#### Obtaining Third-Party Credentials
+
+##### GitHub OAuth Setup:
+1. Visit [GitHub Developer Settings](https://github.com/settings/developers)
+2. Click "New OAuth App"
+3. Fill in the application name and redirect URL (e.g., `https://your-domain.com/api/auth/callback/github`)
+4. After creation, copy the Client ID and generate a Client Secret
+
+##### Google OAuth Setup:
+1. Visit [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project
+3. Configure the OAuth consent screen
+4. Create OAuth 2.0 credentials and add a redirect URI (e.g., `https://your-domain.com/api/auth/callback/google`)
+5. Copy the generated Client ID and Client Secret
+
+## Advanced Authentication Features
+
+### Multi-Factor Authentication (MFA)
+
+Better Auth supports various MFA methods, including TOTP (such as Google Authenticator) and SMS verification codes. Bunship has integrated these features, allowing users to enable MFA in their account settings to enhance security.
+
+### Passkey (WebAuthn) Support
+
+Passkey allows users to log in using biometric authentication (fingerprint, facial recognition) or device PIN codes without entering passwords. This feature is integrated into Bunship to provide users with a more convenient login experience.
+
+## Additional Features and Customization
+
+For more advanced authentication features and customization options, please refer to the [Better Auth official documentation](https://www.better-auth.com/docs/introduction).

@@ -1,0 +1,81 @@
+---
+title: 登录和注册
+description: 使用 better-auth 来实现基本登录和注册，第三方登录、MFA 二次验证等
+---
+import { DynamicLink } from 'fumadocs-core/dynamic-link';
+
+Bunship 已集成 [Better Auth](https://www.better-auth.com) 提供完整的身份验证解决方案，包括基本的邮箱登录/注册、第三方登录、MFA 二次验证和 Passkey 等功能。项目中已经实现了基本的登录和注册页面，位于 `/signin` 和 `/signup` 路径。
+
+## 配置环境变量
+
+### 1. 生成安全密钥
+
+首先，生成一个安全密钥用于加密会话和 token：
+
+```bash
+# 生成 BETTER_AUTH_SECRET（UNIX系统）
+openssl rand -base64 32
+# 示例输出：y4FzKL2q9tXwVp7nRl8jWmBdGcHvJiUoP1k3s5NhT6Q=
+
+# Windows系统可使用 PowerShell：
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
+将生成的密钥添加到 `.env` 文件：
+
+```
+BETTER_AUTH_SECRET=<你生成的密钥>
+BETTER_AUTH_URL=<你的应用URL，如 http://localhost:3000>
+```
+### 2.配置邮件服务
+
+参考 <DynamicLink href="/[lang]//features/auth">【邮件服务】</DynamicLink>
+
+## 支持的登录方式
+
+### 邮箱登录/注册
+
+Bunship 已内置邮箱登录和注册功能，访问 `/signin` 和 `/signup` 页面即可使用。无需额外配置，系统会自动处理邮箱验证和账户创建流程。
+
+### 第三方登录
+
+项目已支持多种第三方登录方式，只需配置相应的环境变量即可启用：
+
+```
+# GitHub 登录
+GITHUB_CLIENT_ID=<your_github_client_id>
+GITHUB_CLIENT_SECRET=<your_github_client_secret>
+
+# Google 登录
+GOOGLE_CLIENT_ID=<your_google_client_id>
+GOOGLE_CLIENT_SECRET=<your_google_client_secret>
+```
+
+#### 获取第三方登录凭据
+
+##### GitHub OAuth 设置：
+1. 访问 [GitHub Developer Settings](https://github.com/settings/developers)
+2. 点击 "New OAuth App"
+3. 填写应用名称和重定向 URL（例如：`https://your-domain.com/api/auth/callback/github`）
+4. 创建后复制 Client ID 和生成 Client Secret
+
+##### Google OAuth 设置：
+1. 访问 [Google Cloud Console](https://console.cloud.google.com/)
+2. 创建一个新项目
+3. 配置 OAuth 同意屏幕
+4. 创建 OAuth 2.0 凭据，添加重定向 URI（例如：`https://your-domain.com/api/auth/callback/google`）
+5. 复制生成的 Client ID 和 Client Secret
+
+## 高级认证功能
+
+### 多因素认证 (MFA)
+
+Better Auth 支持多种 MFA 方式，包括 TOTP（如 Google Authenticator）和手机验证码。Bunship 已经集成了相关功能，用户可以在账户设置中启用 MFA 增强安全性。
+
+### Passkey (WebAuthn) 支持
+
+Passkey 允许用户使用生物识别（指纹、面部识别）或设备 PIN 码登录，无需输入密码。此功能已在 Bunship 中集成，为用户提供更便捷的登录体验。
+
+## 更多功能和自定义
+
+更多高级认证功能和自定义选项，请参考 [Better Auth 官方文档](https://www.better-auth.com/docs/introduction)。

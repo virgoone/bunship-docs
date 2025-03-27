@@ -1,0 +1,4 @@
+{
+  "title": "Features",
+  "pages": ["database", "auth", "emails", "storage", "i18n"]
+}

@@ -1,0 +1,118 @@
+---
+title: 数据库 和 ORM
+description: Bunship 使用的数据库和 ORM 工具
+---
+
+Bunship 默认使用 Supabase 数据库，管理用户信息、订单或者博客等，也可使用 MySQL / PostgreSQL等其他数据库，目前 Bunship 使用的 ORM 是 Prisma，
+即 Prisma 支持的数据库都可使用
+
+## Supabase 配置
+
+### 创建 Supabase 项目
+
+1. 访问 [Supabase 官网](https://supabase.com/) 并注册/登录账户
+2. 创建新项目，设置项目名称和密码
+3. 等待项目初始化完成
+
+### 获取连接信息
+
+在项目设置的 "Database" 选项卡中，找到并复制以下信息：
+
+- Database URL
+
+## Prisma 配置
+
+Bunship 已经预配置了 Prisma，配置文件位于 `prisma/schema.prisma`，Prisma 客户端可通过 `@/lib/prisma` 导入使用。
+
+### 初始化 Prisma
+
+项目初次克隆后，只需执行以下命令生成 Prisma 客户端：
+
+```bash
+bun prisma generate
+```
+
+### 配置数据库连接
+
+编辑 `.env` 文件，添加 Supabase 数据库连接信息：
+
+```
+DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-ID].supabase.co:5432/postgres"
+```
+
+### schema.prisma 文件
+
+项目中的 `prisma/schema.prisma` 文件已经包含了基础数据模型：
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 数据模型已定义
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+```
+
+## 使用方法
+
+### 在应用中使用
+
+Prisma 客户端已经在 `@/lib/prisma` 中配置好，直接导入使用：
+
+```typescript
+import { prisma } from "@/lib/prisma";
+
+// 查询用户
+export async function getUsers() {
+  return await prisma.user.findMany();
+}
+
+// 创建用户
+export async function createUser(data: { email: string; name?: string }) {
+  return await prisma.user.create({ data });
+}
+```
+
+## 数据库迁移
+
+当更新数据模型后，执行以下命令更新数据库结构：
+
+```bash
+# 生成迁移文件
+bun prisma migrate dev --name add_new_fields
+
+# 将更改部署到生产环境
+bun prisma migrate deploy
+```
+
+## 使用其他数据库
+
+Prisma 支持多种数据库，只需修改 `schema.prisma` 中的 provider：
+
+```prisma
+datasource db {
+  provider = "mysql" // 或 "sqlite", "sqlserver" 等
+  url      = env("DATABASE_URL")
+}
+```
+
+然后更新 `.env` 文件中的连接字符串即可。
+
+## 常见问题
+
+### 数据库连接失败
+
+- 检查连接字符串是否正确
+- 确认 IP 白名单设置
+- 验证数据库用户权限

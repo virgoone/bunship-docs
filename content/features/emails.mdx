@@ -1,0 +1,233 @@
+---
+title: Email Service
+description: Bunship uses resend and @react-email/components for email functionality
+---
+
+Bunship integrates [Resend](https://resend.com) and [@react-email/components](https://react.email) to provide email services, supporting verification emails, one-time verification codes, password reset functionality, and responsive email templates.
+
+## Setting Up Resend
+
+### 1. Create an Account
+
+First, you need to create an account on the Resend platform:
+
+1. Visit the [Resend website](https://resend.com) and sign up
+2. Complete email verification
+3. Create a domain or use Resend's testing domain
+
+### 2. Obtain API Key
+
+1. Log in to the Resend console
+2. Navigate to the "API Keys" section
+3. Click the "Create API Key" button
+4. Name your key and create it
+5. Copy the generated API key
+
+### 3. Configure Environment Variables
+
+Add the API key to your project's `.env` file:
+
+```
+RESEND_API_KEY=re_xxxxxxxxxxxx
+```
+
+## Email Templates
+
+Bunship uses React Email to create responsive email templates, all located in the `src/emails/templates` directory.
+
+### Implemented Email Templates
+
+Bunship has already implemented the following email templates:
+
+1. **Email Verification** - Used to verify user email addresses
+2. **One-Time Verification Code (OTP)** - Used for multi-factor authentication or login verification
+3. **Password Reset** - Used for password reset workflows
+
+### Previewing Email Templates
+
+You can preview email templates locally using the following command:
+
+```bash
+bun email:dev
+```
+
+This will start a local server, typically at `http://localhost:3001`, where you can view and test all email template renderings in your browser.
+
+## Creating Custom Email Templates
+
+You can add custom email templates by creating new React components in the `src/emails/templates` directory.
+
+### Template Example
+
+Here's an example of an email template for sending a one-time verification code:
+
+```tsx
+import { Footer } from "@/emails/components/footer";
+import { Logo } from "@/emails/components/logo";
+import {
+  Body,
+  Container,
+  Font,
+  Head,
+  Html,
+  Preview,
+  Section,
+  Tailwind,
+  Text,
+} from "@react-email/components";
+
+export default function RequestSendOtpEmail({
+  name = "there",
+  otp = "123456",
+  expiresInMinutes = 10,
+}: {
+  name: string;
+  otp: string;
+  expiresInMinutes?: number;
+}) {
+  return (
+    <Html>
+      <Head>
+        <Font
+          fontFamily="Geist Mono"
+          fallbackFontFamily="Verdana"
+          webFont={{
+            url: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@500&display=swap",
+            format: "woff2",
+          }}
+          fontWeight={500}
+          fontStyle="normal"
+        />
+      </Head>
+      <Preview>Your Bunship verification code: {otp}</Preview>
+      <Tailwind>
+        <Body className="bg-white font-mono">
+          <Container className="mx-auto py-5 pb-12 max-w-[580px]">
+            <Logo />
+
+            <Text className="text-xs leading-7 mb-6 font-mono">Hi {name},</Text>
+
+            <Text className="text-xs leading-7 pb-2 font-mono">
+              Here is your verification code for Bunship:
+            </Text>
+
+            <Section className="py-4">
+              <Text className="text-center font-mono text-2xl tracking-widest font-bold bg-gray-100 py-4 rounded-md">
+                {otp}
+              </Text>
+            </Section>
+
+            <Text className="text-xs leading-7 mt-3 font-mono">
+              This code will expire in {expiresInMinutes} minutes. Please enter
+              it on the verification page to complete your sign-in process.
+            </Text>
+
+            <Text className="text-xs leading-7 mt-4 font-mono">
+              If you didn&#x27;t request this code, you can safely ignore this
+              email.
+            </Text>
+
+            <Text className="text-xs leading-7 mt-4 font-mono">
+              For security reasons, never share this code with anyone. Bunship
+              team will never ask you for this code.
+            </Text>
+
+            <Footer />
+          </Container>
+        </Body>
+      </Tailwind>
+    </Html>
+  );
+}
+```
+
+## Sending Emails
+
+Bunship has implemented email sending methods in `@/lib/auth`. These methods are used for:
+
+1. Sending email verification emails
+2. Sending one-time verification codes
+3. Sending password reset links
+
+### Email Sending Example
+
+```typescript
+import { Resend } from "resend";
+import { render } from "@react-email/render";
+import RequestSendOtpEmail from "@/emails/templates/request-send-otp-email";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+export async function sendOtpEmail(email: string, name: string, otp: string) {
+  try {
+    const html = render(
+      <RequestSendOtpEmail 
+        name={name} 
+        otp={otp} 
+        expiresInMinutes={10} 
+      />
+    );
+    
+    await resend.emails.send({
+      from: "Bunship <noreply@bunship.example.com>",
+      to: email,
+      subject: "Your verification code",
+      html: html,
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send email:", error);
+    return { success: false, error };
+  }
+}
+```
+
+## Custom Email Components
+
+In addition to creating complete email templates, you can create reusable email components such as headers, buttons, and footers. Bunship provides some common components in the `src/emails/components` directory.
+
+### Creating Custom Components
+
+For example, creating a custom button component:
+
+```tsx
+// src/emails/components/button.tsx
+import { Button as EmailButton } from "@react-email/components";
+
+export function Button({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <EmailButton
+      href={href}
+      className="bg-blue-600 text-white font-bold py-3 px-6 rounded-md"
+    >
+      {children}
+    </EmailButton>
+  );
+}
+```
+
+## Troubleshooting
+
+### Email Not Sending
+
+1. Check if the `RESEND_API_KEY` environment variable is set correctly
+2. Verify that the sender address is validated on the Resend platform
+3. Check the Resend console for any sending errors
+
+### Email Styling Issues
+
+1. Use `bun email:dev` to preview emails and ensure styles are correct
+2. Different email clients have varying CSS support; use inline styles when possible
+3. Using React Email's built-in components can improve email compatibility
+
+## Further Reading
+
+- [Resend Official Documentation](https://resend.com/docs)
+- [React Email Official Documentation](https://react.email/docs)
